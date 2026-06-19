@@ -785,10 +785,13 @@ def extract_workbook_info_regions(
 def summarize_workbook_result(result: dict[str, Any]) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for sheet_name, data in result["sheets"].items():
+        regions = data.get("regions", data.get("info_regions", []))
         rows.append({
             "sheet_name": sheet_name,
-            "info_region_count": len(data.get("info_regions", [])),
-            "info_regions": data.get("info_regions", []),
+            "region_count": len(regions),
+            "regions": regions,
+            "image_count": len(data.get("images", [])),
+            "images": data.get("images", []),
         })
     return {
         "workbook": result["workbook"],

@@ -7,6 +7,7 @@ from typing import Any
 from .config import load_config
 from .extractor import extract_workbook_info_regions, summarize_workbook_result, open_workbook
 from .io import ensure_dir, safe_name, write_json
+from .image_export import extract_sheet_images_to_dir
 from .visualize import render_region_overlay
 
 
@@ -39,25 +40,52 @@ def run_and_write(
 ) -> dict[str, Any]:
     config = load_config(config_path)
     result = extract_workbook_info_regions(workbook_path, sheet_name=sheet_name, config=config)
-    summary = summarize_workbook_result(result)
 
     out = ensure_dir(out_dir)
-    write_json(out / "info_regions_full.json", result)
-    write_json(out / "info_regions_summary.json", summary)
 
+    # Use a normal workbook for extracting embedded images because image anchors live
+    # in the drawing layer, not in cached cell values.
+    wb_drawings = open_workbook(workbook_path, data_only=False)
+
+    # data_only=True is used only for debug overlay PNGs so formula cache values can
+    # be displayed when Excel has saved them.
     wb_values = None
     if write_images and config.get("visualization", {}).get("enabled", True):
-        # data_only=True shows cached formula results when the workbook contains them.
         wb_values = open_workbook(workbook_path, data_only=True)
 
     for sheet, data in result["sheets"].items():
         sheet_dir = ensure_dir(out / safe_name(sheet))
-        write_json(sheet_dir / "info_regions.json", data)
 
-        if wb_values is not None and data.get("info_regions"):
+        if config.get("extract_embedded_images", True):
+            ws_drawing = wb_drawings[sheet]
+            images = extract_sheet_images_to_dir(
+                workbook_path,
+                ws_drawing,
+                sheet_dir,
+                rel_dir=str(config.get("embedded_image_dir", "images")),
+            )
+        else:
+            images = []
+
+        # Final user-facing schema:
+        # {
+        #   "sheet_name": "...",
+        #   "regions": ["A1:P1", ...],
+        #   "images": [{"name": "...", "range_ref": "...", "path": "..."}]
+        # }
+        sheet_output = {
+            "sheet_name": data["sheet_name"],
+            "regions": data.get("info_regions", []),
+            "images": images,
+        }
+
+        result["sheets"][sheet] = sheet_output
+        write_json(sheet_dir / "info_regions.json", sheet_output)
+
+        if wb_values is not None and sheet_output.get("regions"):
             ws = wb_values[sheet]
             viz_cfg = config.get("visualization", {})
-            overlay_regions = _overlay_regions_from_ranges(data["info_regions"], sheet)
+            overlay_regions = _overlay_regions_from_ranges(sheet_output["regions"], sheet)
             render_region_overlay(
                 ws,
                 overlay_regions,
@@ -76,5 +104,9 @@ def run_and_write(
                 font_path=viz_cfg.get("font_path"),
                 workbook_path=str(workbook_path),
             )
+
+    summary = summarize_workbook_result(result)
+    write_json(out / "info_regions_full.json", result)
+    write_json(out / "info_regions_summary.json", summary)
 
     return result

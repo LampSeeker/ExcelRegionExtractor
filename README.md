@@ -264,3 +264,87 @@ v5:
   ]
 }
 ```
+
+
+## v6 변경 사항: embedded image extraction
+
+이미지가 있는 시트는 실제 이미지 파일을 추출해서 시트 출력 폴더 아래 `images/`에 저장합니다.
+
+`info_regions`는 계속 range 문자열 목록만 유지합니다.  
+이미지 링크는 별도 `images` 배열에 기록합니다.
+
+예시:
+
+```json
+{
+  "sheet_name": "각형맨홀(특2호)",
+  "info_regions": [
+    "A1:P1",
+    "B4:H13",
+    "H4:P12",
+    "R4:S11",
+    "E13:L22",
+    "C23:N30",
+    "A32:P60"
+  ],
+  "images": [
+    {
+      "range_ref": "B4:H13",
+      "path": "images/IMG001_B4_H13_Picture_1.png"
+    }
+  ]
+}
+```
+
+출력 구조:
+
+```text
+outputs/all_sheets/
+  각형맨홀(특2호)/
+    info_regions.json
+    info_regions.png
+    images/
+      IMG001_B4_H13_....png
+      IMG002_H4_P12_....png
+      IMG003_E13_L22_....png
+```
+
+관련 설정:
+
+```json
+{
+  "extract_embedded_images": true,
+  "embedded_image_dir": "images"
+}
+```
+
+`--no-images`는 디버그 overlay PNG 생성을 끄는 옵션입니다.  
+embedded image 추출은 `extract_embedded_images` 설정이 `true`이면 계속 수행합니다.
+
+
+## v6 JSON schema
+
+최종 JSON은 다음 구조를 사용합니다.
+
+```json
+{
+  "sheet_name": "U형측구",
+  "regions": [
+    "A1:P1",
+    "A3:F8",
+    "J5:O15",
+    "A8:G17",
+    "A18:P26"
+  ],
+  "images": [
+    {
+      "name": "Picture 1",
+      "range_ref": "A3:F8",
+      "path": "images/IMG001_A3_F8_Picture_1.png"
+    }
+  ]
+}
+```
+
+`regions`는 정보영역 range 문자열 목록입니다.  
+`images`는 이미지 이름, 좌표, 추출된 이미지 파일 위치만 기록합니다.

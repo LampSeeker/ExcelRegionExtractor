@@ -33,8 +33,9 @@ def main() -> None:
     for sheet, data in result["sheets"].items():
         print(
             f"  - {sheet}: "
-            f"regions={len(data.get('info_regions', []))}, "
-            f"ranges={data.get('info_regions', [])}"
+            f"regions={len(data.get('regions', data.get('info_regions', [])))}, "
+            f"ranges={data.get('regions', data.get('info_regions', []))}, "
+            f"images={len(data.get('images', []))}"
         )
 
 
