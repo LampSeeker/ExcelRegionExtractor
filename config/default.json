@@ -1,0 +1,24 @@
+{
+  "include_values": true,
+  "include_merged_cells": true,
+  "include_images": true,
+  "include_grouped_drawing_images": true,
+  "bounds_padding_rows": 2,
+  "bounds_padding_cols": 2,
+  "connectivity": 8,
+  "min_occupied_cells": 1,
+  "remove_contained_duplicates": false,
+  "visualization": {
+    "enabled": true,
+    "font_path": null,
+    "max_rows": 160,
+    "max_cols": 90,
+    "pad_rows": 1,
+    "pad_cols": 1,
+    "preserve_dimensions": true,
+    "include_images": true,
+    "include_cell_text": true,
+    "include_merged_cells": true,
+    "scale": 1.0
+  }
+}
