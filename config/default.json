@@ -20,5 +20,25 @@
     "include_cell_text": true,
     "include_merged_cells": true,
     "scale": 1.0
-  }
+  },
+  "use_borders": true,
+  "strong_borders_only": true,
+  "border_connectivity": 4,
+  "min_border_cells": 2,
+  "border_expand_min_value_overlap": 0.8,
+  "border_expand_min_border_overlap": 0.1,
+  "border_expand_max_gap": 0,
+  "add_border_only_regions": false,
+  "border_expand_max_area_ratio": 3.0,
+  "border_expand_max_extra_rows": 3,
+  "border_expand_max_extra_cols": 3,
+  "use_border_contact_merge": true,
+  "border_contact_strong_only": false,
+  "border_contact_tolerance_cells": 0,
+  "border_contact_min_edges": 1,
+  "border_contact_merge_max_gap": 5,
+  "border_contact_merge_min_axis_overlap": 0.8,
+  "border_contact_merge_max_area_ratio": 2.5,
+  "border_contact_min_edges_per_side": 1,
+  "border_contact_min_touched_sides": 2
 }
