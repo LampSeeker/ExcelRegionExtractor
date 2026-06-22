@@ -1,4 +1,4 @@
-# Excel Info Region Extractor
+# Excel Region Extractor
 
 Excel workbook의 각 sheet에서 정보가 들어 있는 영역을 찾아 Excel range 문자열로 저장하는 Python 프로젝트입니다.
 
@@ -15,25 +15,35 @@ pip install -e .
 전체 sheet 실행:
 
 ```powershell
-python scripts/run_all.py --workbook examples/sample.xlsx --out outputs/all_sheets
+excel-regions --workbook examples/sample.xlsx --out outputs/all_sheets
 ```
 
 특정 sheet만 실행:
 
 ```powershell
-python scripts/run_all.py --workbook examples/sample.xlsx --sheet "각형맨홀(특2호)" --out outputs/manhole
+excel-regions --workbook examples/sample.xlsx --sheet "각형맨홀(특2호)" --out outputs/manhole
 ```
 
 overlay PNG 없이 JSON만 생성:
 
 ```powershell
-python scripts/run_all.py --workbook examples/sample.xlsx --out outputs/all_sheets --no-images
+excel-regions --workbook examples/sample.xlsx --out outputs/all_sheets --no-images
 ```
 
 호환 wrapper:
 
 ```powershell
 python scripts/extract_info_regions.py --workbook examples/sample.xlsx --out outputs/all_sheets
+```
+
+Python 코드에서 사용:
+
+```python
+from excel_info_region import extract_workbook_info_regions
+from excel_info_region.config import load_config
+
+config = load_config("config/default.json")
+result = extract_workbook_info_regions("examples/sample.xlsx", config=config)
 ```
 
 ## 출력
@@ -146,7 +156,7 @@ pytest
 
 ```powershell
 pytest
-python scripts/run_all.py --workbook examples/sample.xlsx --out outputs/all_sheets --no-images
+excel-regions --workbook examples/sample.xlsx --out outputs/all_sheets --no-images
 ```
 
 시각화나 image 추출을 바꿨다면 `--no-images` 없이 실행해서 sheet별 `info_regions.png`와 `images/` 결과를 확인합니다.
