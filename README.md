@@ -12,7 +12,7 @@ structural tag 없음
 title/body 판단 없음
 ```
 
-출력은 오직 `info_regions`입니다.
+최종 JSON의 정보영역 키는 `regions`입니다.
 
 ## 처리 구조
 
@@ -80,7 +80,7 @@ outputs/all_sheets/
 ```json
 {
   "sheet_name": "각형맨홀(특2호)",
-  "info_regions": [
+  "regions": [
     "A1:P1",
     "B4:H13",
     "H4:P12",
@@ -126,12 +126,12 @@ PNG 렌더링은 `data_only=True`로 workbook을 열기 때문에, 엑셀 파일
 
 ## v2 변경 사항
 
-`info_regions`를 객체 목록이 아니라 range 문자열 목록으로 단순화했습니다.
+`regions`를 객체 목록이 아니라 range 문자열 목록으로 단순화했습니다.
 
 ```json
 {
   "sheet_name": "각형맨홀(특2호)",
-  "info_regions": ["A1:P1", "B4:H13"]
+  "regions": ["A1:P1", "B4:H13"]
 }
 ```
 
@@ -143,7 +143,7 @@ PNG 렌더링은 `data_only=True`로 workbook을 열기 때문에, 엑셀 파일
 ```json
 {
   "sheet_name": "토공",
-  "info_regions": [
+  "regions": [
     "B2:G2",
     "B4:G8"
   ]
@@ -259,7 +259,7 @@ v5:
 ```json
 {
   "sheet_name": "토공",
-  "info_regions": [
+  "regions": [
     "B16:J53"
   ]
 }
@@ -270,7 +270,7 @@ v5:
 
 이미지가 있는 시트는 실제 이미지 파일을 추출해서 시트 출력 폴더 아래 `images/`에 저장합니다.
 
-`info_regions`는 계속 range 문자열 목록만 유지합니다.  
+`regions`는 계속 range 문자열 목록만 유지합니다.  
 이미지 링크는 별도 `images` 배열에 기록합니다.
 
 예시:
@@ -278,7 +278,7 @@ v5:
 ```json
 {
   "sheet_name": "각형맨홀(특2호)",
-  "info_regions": [
+  "regions": [
     "A1:P1",
     "B4:H13",
     "H4:P12",

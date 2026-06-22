@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Any
 from openpyxl.utils import get_column_letter
 
@@ -73,18 +73,4 @@ class Box:
             "height": self.height,
             "width": self.width,
             "area": self.area,
-        }
-
-
-@dataclass
-class InfoRegion:
-    id: str
-    sheet_name: str
-    box: Box
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "sheet_name": self.sheet_name,
-            **self.box.to_dict(),
         }

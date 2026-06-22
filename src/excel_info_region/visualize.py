@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 from openpyxl.utils import get_column_letter
@@ -618,42 +618,3 @@ def render_region_overlay(
 
     image.convert("RGB").save(out_path)
     return out_path
-
-
-def render_algorithm_outputs(
-    ws: Worksheet,
-    sheet_data: dict[str, Any],
-    sheet_out_dir: str | Path,
-    algorithms: Iterable[str],
-    config: dict[str, Any] | None = None,
-) -> list[Path]:
-    cfg = config or {}
-    paths: list[Path] = []
-    bounds = sheet_data.get("bounds")
-    for algo in algorithms:
-        data = sheet_data.get(algo, {})
-        regions = data.get("regions") or []
-        if not regions:
-            continue
-        path = Path(sheet_out_dir) / f"{algo}.png"
-        paths.append(
-            render_region_overlay(
-                ws,
-                regions,
-                path,
-                title=f"{ws.title} - {algo}",
-                bounds=bounds,
-                max_rows=int(cfg.get("max_rows", 120)),
-                max_cols=int(cfg.get("max_cols", 50)),
-                pad_rows=int(cfg.get("pad_rows", 2)),
-                pad_cols=int(cfg.get("pad_cols", 2)),
-                preserve_dimensions=bool(cfg.get("preserve_dimensions", True)),
-                include_images=bool(cfg.get("include_images", True)),
-                include_cell_text=bool(cfg.get("include_cell_text", True)),
-                include_merged_cells=bool(cfg.get("include_merged_cells", True)),
-                scale=float(cfg.get("scale", 1.0)),
-                font_path=cfg.get("font_path"),
-                workbook_path=cfg.get("workbook_path"),
-            )
-        )
-    return paths
