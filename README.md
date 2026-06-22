@@ -199,3 +199,7 @@ examples/sample2.xlsx
 ## Notes
 
 `openpyxl` does not calculate formulas. Overlay rendering uses `data_only=True`, so formula cells need cached values saved by Excel to show calculated results.
+
+## License
+
+MIT
