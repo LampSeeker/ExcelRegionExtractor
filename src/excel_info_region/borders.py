@@ -11,6 +11,7 @@ from .components import (
     overlap_ratio_on_axis,
     union_find_groups,
 )
+from .cells import is_hidden_cell
 from .schema import Box
 
 
@@ -45,7 +46,7 @@ def collect_border_occupied(ws: Worksheet, bounds: Box | None, config: dict[str,
     occupied: set[tuple[int, int]] = set()
 
     for (row, col), cell in ws._cells.items():
-        if bounds.contains(row, col) and cell_has_border(cell, strong_only=strong_only):
+        if bounds.contains(row, col) and not is_hidden_cell(ws, row, col, config) and cell_has_border(cell, strong_only=strong_only):
             occupied.add((row, col))
 
     # Merged cells often store border information only on edge cells.
@@ -66,7 +67,8 @@ def collect_border_occupied(ws: Worksheet, bounds: Box | None, config: dict[str,
             if any(cell_has_border(cell, strong_only=strong_only) for cell in edge_cells):
                 for row in range(max(bounds.min_row, rng.min_row), min(bounds.max_row, rng.max_row) + 1):
                     for col in range(max(bounds.min_col, rng.min_col), min(bounds.max_col, rng.max_col) + 1):
-                        occupied.add((row, col))
+                        if not is_hidden_cell(ws, row, col, config):
+                            occupied.add((row, col))
 
     return occupied
 
@@ -169,7 +171,7 @@ def collect_border_edges(ws: Worksheet, bounds: Box | None, config: dict[str, An
             edges.add(("v", row, col + 1))
 
     for (row, col), cell in ws._cells.items():
-        if bounds.contains(row, col):
+        if bounds.contains(row, col) and not is_hidden_cell(ws, row, col, config):
             add_cell_edges(row, col, cell)
 
     if config.get("include_merged_cells", True):
@@ -181,17 +183,17 @@ def collect_border_edges(ws: Worksheet, bounds: Box | None, config: dict[str, An
             for col in range(rng.min_col, rng.max_col + 1):
                 top_cell = ws.cell(rng.min_row, col)
                 bottom_cell = ws.cell(rng.max_row, col)
-                if _side_has_style(top_cell.border.top) and (not strong_only or cell_has_border_side(top_cell.border.top, strong_only=True)):
+                if not is_hidden_cell(ws, rng.min_row, col, config) and _side_has_style(top_cell.border.top) and (not strong_only or cell_has_border_side(top_cell.border.top, strong_only=True)):
                     edges.add(("h", rng.min_row, col))
-                if _side_has_style(bottom_cell.border.bottom) and (not strong_only or cell_has_border_side(bottom_cell.border.bottom, strong_only=True)):
+                if not is_hidden_cell(ws, rng.max_row, col, config) and _side_has_style(bottom_cell.border.bottom) and (not strong_only or cell_has_border_side(bottom_cell.border.bottom, strong_only=True)):
                     edges.add(("h", rng.max_row + 1, col))
 
             for row in range(rng.min_row, rng.max_row + 1):
                 left_cell = ws.cell(row, rng.min_col)
                 right_cell = ws.cell(row, rng.max_col)
-                if _side_has_style(left_cell.border.left) and (not strong_only or cell_has_border_side(left_cell.border.left, strong_only=True)):
+                if not is_hidden_cell(ws, row, rng.min_col, config) and _side_has_style(left_cell.border.left) and (not strong_only or cell_has_border_side(left_cell.border.left, strong_only=True)):
                     edges.add(("v", row, rng.min_col))
-                if _side_has_style(right_cell.border.right) and (not strong_only or cell_has_border_side(right_cell.border.right, strong_only=True)):
+                if not is_hidden_cell(ws, row, rng.max_col, config) and _side_has_style(right_cell.border.right) and (not strong_only or cell_has_border_side(right_cell.border.right, strong_only=True)):
                     edges.add(("v", row, rng.max_col + 1))
 
     return edges

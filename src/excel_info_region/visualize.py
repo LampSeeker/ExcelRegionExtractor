@@ -6,8 +6,11 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.cell import range_boundaries
 from openpyxl.worksheet.worksheet import Worksheet
 
+from .chart_export import render_chart_preview
+from .chart_regions import chart_metadata
 from .io import ensure_dir
 from .raw_drawing import extract_drawing_images, drawing_image_pixel_box
 
@@ -322,6 +325,36 @@ def _paste_worksheet_images(
         base.alpha_composite(pil_img, (x0, y0))
 
 
+def _paste_worksheet_charts(
+    base: Image.Image,
+    ws: Worksheet,
+    left_gutter: int,
+    top_gutter: int,
+    col_x: dict[int, int],
+    row_y: dict[int, int],
+    col_widths: dict[int, int],
+    row_heights: dict[int, int],
+    min_row: int,
+    min_col: int,
+) -> None:
+    for chart in chart_metadata(ws, {}):
+        try:
+            min_col_v, min_row_v, max_col_v, max_row_v = range_boundaries(chart["range_ref"])
+            x0 = left_gutter + col_x[min_col_v]
+            y0 = top_gutter + row_y[min_row_v]
+            x1 = left_gutter + col_x[max_col_v] + col_widths[max_col_v]
+            y1 = top_gutter + row_y[max_row_v] + row_heights[max_row_v]
+        except Exception:
+            continue
+        if max_row_v < min_row or max_col_v < min_col:
+            continue
+        chart_img = render_chart_preview(chart)
+        if chart_img is None:
+            continue
+        chart_img = chart_img.convert("RGBA").resize((max(1, x1 - x0), max(1, y1 - y0)))
+        base.alpha_composite(chart_img, (x0, y0))
+
+
 def render_region_overlay(
     ws: Worksheet,
     regions: list[dict[str, Any]],
@@ -461,6 +494,7 @@ def render_region_overlay(
     # Paste images before text and region overlays so boxes remain visible.
     if include_images:
         _paste_worksheet_images(image, ws, left_gutter, top_gutter, col_x, row_y, min_row, min_col, max_row, max_col, workbook_path)
+        _paste_worksheet_charts(image, ws, left_gutter, top_gutter, col_x, row_y, col_widths, row_heights, min_row, min_col)
         draw = ImageDraw.Draw(image)
 
     # Text layer.

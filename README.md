@@ -2,7 +2,7 @@
 
 Extract rectangular information regions from Excel workbooks and return them as range strings such as `A1:D10`.
 
-The extractor uses cell values, merged cells, borders, and embedded image anchors. It can write sheet JSON, workbook summary JSON, optional overlay PNGs, and extracted embedded image files.
+The extractor uses cell values, merged cells, borders, embedded image anchors, and chart anchors. It can write sheet JSON, workbook summary JSON, optional overlay PNGs, extracted embedded image files, and simple chart preview PNGs.
 
 ## Install
 
@@ -74,42 +74,58 @@ Example overlay:
 
 ![Synthetic Excel region overlay](docs/images/synthetic_demo_regions.png)
 
+Chart demo:
+
+```powershell
+excel-regions --workbook examples/chart.xlsx --sheet "XXX Summary Northeast" --out outputs/chart_demo
+```
+
+Chart overlay:
+
+![Chart Excel region overlay](docs/images/chart_demo_regions.png)
+
+Extracted chart preview:
+
+![Chart preview](docs/images/chart_demo_preview.png)
+
 ## Output
 
 ```text
-outputs/demo/
+outputs/chart_demo/
   info_regions_full.json
   info_regions_summary.json
 
-  Synthetic Demo/
+  XXX Summary Northeast/
     info_regions.json
     info_regions.png
-    images/
-      IMG001_G4_I9_Image_1.png
+    charts/
+      CHART001_E3_Q20_Chart_1.png
 ```
 
 Sheet JSON:
 
 ```json
 {
-  "sheet_name": "Synthetic Demo",
+  "sheet_name": "XXX Summary Northeast",
   "regions": [
-    "A1:H1",
-    "A3:D6",
-    "G4:I9",
-    "A9:E12"
+    "A1:D15",
+    "E3:Q20",
+    "A25:M49"
   ],
-  "images": [
+  "images": [],
+  "charts": [
     {
-      "name": "Image 1",
-      "range_ref": "G4:I9",
-      "path": "images/IMG001_G4_I9_Image_1.png"
+      "name": "Chart 1",
+      "kind": "BarChart",
+      "range_ref": "E3:Q20",
+      "path": "charts/CHART001_E3_Q20_Chart_1.png",
+      "sources": []
     }
   ]
 }
 ```
 
-`regions` is the list of detected Excel ranges. `images` records embedded image metadata and relative paths for extracted files.
+`regions` is the list of detected Excel ranges. `images` records embedded image metadata. `charts` records chart metadata, source ranges, cached chart values when available, and a preview PNG path.
 
 ## How It Works
 
@@ -144,11 +160,17 @@ Common options:
   "include_merged_cells": true,
   "include_images": true,
   "include_grouped_drawing_images": true,
+  "include_charts": true,
+  "include_chart_source_values": true,
+  "respect_hidden_rows_cols": false,
+  "use_print_area_bounds": false,
   "use_borders": true,
   "strong_borders_only": true,
   "use_border_contact_merge": true,
   "extract_embedded_images": true,
-  "embedded_image_dir": "images"
+  "embedded_image_dir": "images",
+  "extract_chart_images": true,
+  "chart_image_dir": "charts"
 }
 ```
 

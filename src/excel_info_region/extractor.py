@@ -11,8 +11,16 @@ from .borders import (
     expand_cell_boxes_with_borders,
     merge_boxes_by_border_contact,
 )
-from .cells import collect_cell_occupied, is_non_empty, merged_boxes_with_values
-from .components import connected_components_from_cells, remove_exact_or_contained_duplicates
+from .cells import (
+    apply_print_area_bounds,
+    collect_cell_occupied,
+    is_hidden_cell,
+    is_non_empty,
+    merged_boxes_with_values,
+    visible_box,
+)
+from .chart_regions import chart_boxes
+from .components import clip_box_to_bounds, connected_components_from_cells, remove_exact_or_contained_duplicates
 from .image_regions import image_boxes
 from .schema import Box
 
@@ -34,29 +42,43 @@ def effective_bounds(ws: Worksheet, workbook_path: str | Path | None, config: di
     cols: list[int] = []
 
     for (row, col), cell in ws._cells.items():
-        if is_non_empty(cell.value):
+        if is_non_empty(cell.value) and not is_hidden_cell(ws, row, col, config):
             rows.append(row)
             cols.append(col)
 
     for box in merged_boxes_with_values(ws):
+        box = visible_box(ws, box, config)
+        if box is None:
+            continue
         rows.extend([box.min_row, box.max_row])
         cols.extend([box.min_col, box.max_col])
 
     for box in image_boxes(ws, workbook_path, config):
+        box = visible_box(ws, box, config)
+        if box is None:
+            continue
+        rows.extend([box.min_row, box.max_row])
+        cols.extend([box.min_col, box.max_col])
+
+    for box in chart_boxes(ws, config):
+        box = visible_box(ws, box, config)
+        if box is None:
+            continue
         rows.extend([box.min_row, box.max_row])
         cols.extend([box.min_col, box.max_col])
 
     if not rows or not cols:
-        return None
+        return apply_print_area_bounds(ws, None, config)
 
     pad_r = int(config.get("bounds_padding_rows", 0))
     pad_c = int(config.get("bounds_padding_cols", 0))
-    return Box(
+    bounds = Box(
         max(1, min(rows) - pad_r),
         max(1, min(cols) - pad_c),
         min(1048576, max(rows) + pad_r),
         min(16384, max(cols) + pad_c),
     )
+    return apply_print_area_bounds(ws, bounds, config)
 
 
 def extract_info_regions_from_sheet(
@@ -88,8 +110,20 @@ def extract_info_regions_from_sheet(
     cell_boxes = merge_boxes_by_border_contact(cell_boxes, ws, bounds, cfg)
 
     # Images stay separate so drawings and adjacent tables do not over-merge.
+    clipped_image_boxes = [
+        clipped
+        for box in image_boxes(ws, workbook_path, cfg)
+        if (visible := visible_box(ws, box, cfg)) is not None
+        if (clipped := clip_box_to_bounds(visible, bounds)) is not None
+    ]
+    clipped_chart_boxes = [
+        clipped
+        for box in chart_boxes(ws, cfg)
+        if (visible := visible_box(ws, box, cfg)) is not None
+        if (clipped := clip_box_to_bounds(visible, bounds)) is not None
+    ]
     boxes = remove_exact_or_contained_duplicates(
-        [*cell_boxes, *image_boxes(ws, workbook_path, cfg)],
+        [*cell_boxes, *clipped_image_boxes, *clipped_chart_boxes],
         cfg,
     )
 
@@ -137,6 +171,8 @@ def summarize_workbook_result(result: dict[str, Any]) -> dict[str, Any]:
             "regions": regions,
             "image_count": len(data.get("images", [])),
             "images": data.get("images", []),
+            "chart_count": len(data.get("charts", [])),
+            "charts": data.get("charts", []),
         })
     return {
         "workbook": result["workbook"],

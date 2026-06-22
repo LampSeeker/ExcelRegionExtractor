@@ -113,6 +113,16 @@ def dedupe_boxes(boxes: list[Box]) -> list[Box]:
     return result
 
 
+def clip_box_to_bounds(box: Box, bounds: Box) -> Box | None:
+    min_row = max(box.min_row, bounds.min_row)
+    min_col = max(box.min_col, bounds.min_col)
+    max_row = min(box.max_row, bounds.max_row)
+    max_col = min(box.max_col, bounds.max_col)
+    if min_row > max_row or min_col > max_col:
+        return None
+    return Box(min_row, min_col, max_row, max_col)
+
+
 def remove_exact_or_contained_duplicates(boxes: list[Box], config: dict[str, Any]) -> list[Box]:
     boxes = dedupe_boxes(boxes)
     if not config.get("remove_contained_duplicates", False):

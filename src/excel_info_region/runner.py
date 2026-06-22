@@ -6,6 +6,7 @@ from typing import Any
 
 from .config import load_config
 from .extractor import extract_workbook_info_regions, summarize_workbook_result, open_workbook
+from .chart_export import extract_sheet_charts_to_dir
 from .io import ensure_dir, safe_name, write_json
 from .image_export import extract_sheet_images_to_dir
 from .visualize import render_region_overlay
@@ -67,6 +68,13 @@ def run_and_write(
         else:
             images = []
 
+        charts = extract_sheet_charts_to_dir(
+            wb_drawings[sheet],
+            sheet_dir,
+            rel_dir=str(config.get("chart_image_dir", "charts")),
+            config=config,
+        )
+
         # Final user-facing schema:
         # {
         #   "sheet_name": "...",
@@ -77,6 +85,7 @@ def run_and_write(
             "sheet_name": data["sheet_name"],
             "regions": data.get("info_regions", []),
             "images": images,
+            "charts": charts,
         }
 
         result["sheets"][sheet] = sheet_output
