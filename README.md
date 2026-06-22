@@ -119,7 +119,19 @@ Sheet JSON:
       "kind": "BarChart",
       "range_ref": "E3:Q20",
       "path": "charts/CHART001_E3_Q20_Chart_1.png",
-      "sources": []
+      "sources": [
+        {
+          "role": "cat",
+          "range_ref": "B25:M25",
+          "cached_values": ["CCRX [Person_12]", "CCRX Newport", "..."]
+        },
+        {
+          "role": "val",
+          "range_ref": "B26:M26",
+          "values": [["=AVERAGEIF(B27:B45,\">0\")", "..."]],
+          "cached_values": [0.0, 2.0, 4.219298245614035, "..."]
+        }
+      ]
     }
   ]
 }
