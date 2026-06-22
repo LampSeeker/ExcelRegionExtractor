@@ -11,6 +11,13 @@ from .chart_regions import chart_metadata
 from .io import ensure_dir
 
 
+def _remove_empty_dir(path: Path) -> None:
+    try:
+        path.rmdir()
+    except OSError:
+        pass
+
+
 def _safe_filename_part(text: str) -> str:
     return "".join(ch if ch.isalnum() or ch in ".()-_" else "_" for ch in text).strip("_") or "chart"
 
@@ -80,14 +87,6 @@ def render_chart_preview(chart: dict[str, Any]) -> Image.Image | None:
     return image
 
 
-def _render_bar_chart(chart: dict[str, Any], out_path: Path) -> bool:
-    image = render_chart_preview(chart)
-    if image is None:
-        return False
-    image.save(out_path)
-    return True
-
-
 def extract_sheet_charts_to_dir(
     ws: Worksheet,
     out_dir: str | Path,
@@ -95,16 +94,22 @@ def extract_sheet_charts_to_dir(
     rel_dir: str = "charts",
     config: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    chart_dir = Path(out_dir) / rel_dir
     if config is not None and not config.get("extract_chart_images", True):
+        _remove_empty_dir(chart_dir)
         return chart_metadata(ws, config)
 
-    chart_dir = ensure_dir(Path(out_dir) / rel_dir)
     output: list[dict[str, Any]] = []
     for idx, chart in enumerate(chart_metadata(ws, config or {}), 1):
         item = dict(chart)
         filename = f"CHART{idx:03d}_{_safe_filename_part(chart['range_ref'])}_{_safe_filename_part(chart['name'])}.png"
-        path = chart_dir / filename
-        if chart.get("kind") == "BarChart" and _render_bar_chart(chart, path):
-            item["path"] = f"{rel_dir}/{filename}"
+        if chart.get("kind") == "BarChart":
+            image = render_chart_preview(chart)
+            if image is not None:
+                ensure_dir(chart_dir)
+                image.save(chart_dir / filename)
+                item["path"] = f"{rel_dir}/{filename}"
         output.append(item)
+    if not any("path" in item for item in output):
+        _remove_empty_dir(chart_dir)
     return output

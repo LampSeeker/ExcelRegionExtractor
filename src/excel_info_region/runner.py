@@ -64,6 +64,7 @@ def run_and_write(
                 ws_drawing,
                 sheet_dir,
                 rel_dir=str(config.get("embedded_image_dir", "images")),
+                config=config,
             )
         else:
             images = []

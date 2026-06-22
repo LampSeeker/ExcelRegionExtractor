@@ -646,9 +646,7 @@ def render_region_overlay(
         for inset in range(3):
             draw.rectangle((x0 + inset, y0 + inset, x1 - inset, y1 - inset), outline=color)
         label = f"{region.get('id', idx + 1)} {region.get('range_ref', '')}"
-        label_w = min(max(120, _text_bbox(draw, (0, 0), label, label_font)[2] + 10), max(120, x1 - x0))
-        draw.rectangle((x0 + 2, y0 + 2, x0 + label_w, y0 + 22), fill=(255, 255, 255, 230), outline=color)
-        draw.text((x0 + 5, y0 + 5), label[:36], fill=color, font=label_font)
+        draw.text((x0 + 5, y0 + 5), label[:36], fill=color, font=label_font, stroke_width=2, stroke_fill="white")
 
     image.convert("RGB").save(out_path)
     return out_path

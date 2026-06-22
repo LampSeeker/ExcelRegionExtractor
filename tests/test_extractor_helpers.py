@@ -4,6 +4,7 @@ from openpyxl import Workbook
 from openpyxl.chart import BarChart, Reference
 
 from excel_info_region.borders import boxes_are_contact_merge_neighbors
+from excel_info_region.chart_export import extract_sheet_charts_to_dir
 from excel_info_region.chart_regions import chart_boxes, chart_metadata
 from excel_info_region.components import (
     connected_components_from_cells,
@@ -106,3 +107,13 @@ def test_chart_metadata_includes_anchor_and_sources():
     assert charts[0]["kind"] == "BarChart"
     assert charts[0]["range_ref"].startswith("D2:")
     assert {source["role"] for source in charts[0]["sources"]} == {"cat", "val"}
+
+
+def test_chart_export_removes_empty_chart_dir(tmp_path):
+    wb = Workbook()
+    ws = wb.active
+    chart_dir = tmp_path / "charts"
+    chart_dir.mkdir()
+
+    assert extract_sheet_charts_to_dir(ws, tmp_path) == []
+    assert not chart_dir.exists()
