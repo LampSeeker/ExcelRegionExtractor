@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "excel-region-extractor"
 version = "0.1.0"
 description = "Extract information-region bounding boxes from Excel sheets without semantic labels"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "openpyxl>=3.1.0",

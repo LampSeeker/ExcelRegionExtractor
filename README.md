@@ -1,18 +1,16 @@
 # Excel Region Extractor
 
-Extract Excel information-region ranges from workbook sheets.
+Extract rectangular information regions from Excel workbooks and return them as range strings such as `A1:D10`.
 
-The tool uses cell values, merged cells, borders, and embedded image anchors to write JSON outputs, optional overlay PNGs, and extracted embedded image files.
+The extractor uses cell values, merged cells, borders, and embedded image anchors. It can write sheet JSON, workbook summary JSON, optional overlay PNGs, and extracted embedded image files.
 
 ## Install
-
-From PyPI:
 
 ```powershell
 pip install excel-region-extractor
 ```
 
-From GitHub:
+Install directly from GitHub:
 
 ```powershell
 pip install git+https://github.com/LampSeeker/ExcelRegionExtractor.git
@@ -24,40 +22,62 @@ For local development:
 pip install -e .
 ```
 
-## Usage
+## CLI Usage
 
-Run all sheets:
+Run on your workbook:
 
 ```powershell
-excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/all_sheets
+excel-regions --workbook path/to/workbook.xlsx --out outputs/regions
 ```
 
 Run one sheet:
 
 ```powershell
-excel-regions --workbook examples/synthetic_demo.xlsx --sheet "Synthetic Demo" --out outputs/demo
+excel-regions --workbook path/to/workbook.xlsx --sheet "Sheet1" --out outputs/sheet1
 ```
 
-Write JSON and extracted embedded images without overlay PNG:
+Skip overlay PNG generation:
 
 ```powershell
-excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/all_sheets --no-images
+excel-regions --workbook path/to/workbook.xlsx --out outputs/regions --no-images
 ```
 
-Python API:
+`excel-info-regions` is kept as a backward-compatible alias.
+
+## Python API
 
 ```python
 from excel_info_region import extract_workbook_info_regions
 from excel_info_region.config import load_config
 
 config = load_config("config/default.json")
-result = extract_workbook_info_regions("examples/synthetic_demo.xlsx", config=config)
+result = extract_workbook_info_regions("path/to/workbook.xlsx", config=config)
 ```
+
+For writing JSON, overlay PNGs, and extracted images:
+
+```python
+from excel_info_region import run_and_write
+
+run_and_write("path/to/workbook.xlsx", out_dir="outputs/regions")
+```
+
+## Demo
+
+The source repository includes a synthetic, non-sensitive workbook:
+
+```powershell
+excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/demo
+```
+
+Example overlay:
+
+![Synthetic Excel region overlay](docs/images/synthetic_demo_regions.png)
 
 ## Output
 
 ```text
-outputs/all_sheets/
+outputs/demo/
   info_regions_full.json
   info_regions_summary.json
 
@@ -89,30 +109,28 @@ Sheet JSON:
 }
 ```
 
-`regions` is the list of detected Excel ranges. `images` records extracted embedded image metadata and relative file paths.
+`regions` is the list of detected Excel ranges. `images` records embedded image metadata and relative paths for extracted files.
 
-Example overlay:
+## How It Works
 
-![Synthetic Excel region overlay](docs/images/synthetic_demo_regions.png)
-
-## Processing Flow
+Current extractor flow:
 
 ```text
-Excel workbook
-  -> collect non-empty cells
-  -> expand non-empty merged cells to their full merged ranges
-  -> find occupied-cell connected components
-  -> expand ranges with border/table shells
-  -> merge adjacent regions by border contact
-  -> keep embedded image regions separate
-  -> write sheet JSON, workbook summary JSON, and optional overlay PNG
+1. Calculate working bounds from non-empty cells, merged cells, and images
+2. Collect non-empty cells as occupied cells
+3. Find connected components from occupied cells
+4. Convert each connected component to a rectangular bbox
+5. Expand bboxes with border/table shell information
+6. Merge some boxes that touch the same border component
+7. Add images as separate regions
+8. Output range refs such as A1:D10
 ```
 
 Images are intentionally kept separate from cell connected components. This avoids over-merging drawings with nearby tables.
 
 ## Configuration
 
-Default config:
+Default config lives at:
 
 ```text
 config/default.json
@@ -134,7 +152,7 @@ Common options:
 }
 ```
 
-Set a font path if Korean text is broken in overlay PNGs:
+Set a font path if text is broken in overlay PNGs:
 
 ```json
 {
@@ -166,10 +184,17 @@ src/excel_info_region/
 
 ```powershell
 pytest
-excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/all_sheets --no-images
+excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/demo --no-images
 ```
 
 Run without `--no-images` when changing visualization or image extraction.
+
+Private/local Excel samples are ignored:
+
+```text
+examples/sample.xlsx
+examples/sample2.xlsx
+```
 
 ## Notes
 
