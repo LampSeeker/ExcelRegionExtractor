@@ -26,6 +26,10 @@ pip-wheel-metadata/
 # Project outputs
 outputs/
 
+# Private/local Excel samples
+examples/sample.xlsx
+examples/sample2.xlsx
+
 # Local environment/configuration
 .env
 .env.*

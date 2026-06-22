@@ -8,13 +8,13 @@ from excel_info_region.config import load_config
 from excel_info_region.extractor import extract_workbook_info_regions
 
 
-def test_extract_sample_manhole():
+def test_extract_synthetic_demo():
     cfg = load_config(PROJECT_ROOT / "config/default.json")
     result = extract_workbook_info_regions(
-        PROJECT_ROOT / "examples/sample.xlsx",
-        sheet_name="각형맨홀(특2호)",
+        PROJECT_ROOT / "examples/synthetic_demo.xlsx",
+        sheet_name="Synthetic Demo",
         config=cfg,
     )
-    regions = result["sheets"]["각형맨홀(특2호)"]["info_regions"]
+    regions = result["sheets"]["Synthetic Demo"]["info_regions"]
     assert regions
     assert any(r.startswith("A1:") for r in regions)

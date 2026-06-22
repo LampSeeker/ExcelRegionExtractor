@@ -15,25 +15,25 @@ pip install -e .
 전체 sheet 실행:
 
 ```powershell
-excel-regions --workbook examples/sample.xlsx --out outputs/all_sheets
+excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/all_sheets
 ```
 
 특정 sheet만 실행:
 
 ```powershell
-excel-regions --workbook examples/sample.xlsx --sheet "각형맨홀(특2호)" --out outputs/manhole
+excel-regions --workbook examples/synthetic_demo.xlsx --sheet "Synthetic Demo" --out outputs/demo
 ```
 
 overlay PNG 없이 JSON만 생성:
 
 ```powershell
-excel-regions --workbook examples/sample.xlsx --out outputs/all_sheets --no-images
+excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/all_sheets --no-images
 ```
 
 호환 wrapper:
 
 ```powershell
-python scripts/extract_info_regions.py --workbook examples/sample.xlsx --out outputs/all_sheets
+python scripts/extract_info_regions.py --workbook examples/synthetic_demo.xlsx --out outputs/all_sheets
 ```
 
 Python 코드에서 사용:
@@ -43,7 +43,7 @@ from excel_info_region import extract_workbook_info_regions
 from excel_info_region.config import load_config
 
 config = load_config("config/default.json")
-result = extract_workbook_info_regions("examples/sample.xlsx", config=config)
+result = extract_workbook_info_regions("examples/synthetic_demo.xlsx", config=config)
 ```
 
 ## 출력
@@ -81,6 +81,10 @@ sheet별 `info_regions.json`:
 ```
 
 `regions`는 정보영역 range 문자열 목록입니다. `images`는 추출된 embedded image의 이름, anchor range, 상대 경로만 기록합니다.
+
+예시 overlay:
+
+![Synthetic Excel region overlay](docs/images/synthetic_demo_regions.png)
 
 ## 처리 흐름
 
@@ -156,7 +160,7 @@ pytest
 
 ```powershell
 pytest
-excel-regions --workbook examples/sample.xlsx --out outputs/all_sheets --no-images
+excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/all_sheets --no-images
 ```
 
 시각화나 image 추출을 바꿨다면 `--no-images` 없이 실행해서 sheet별 `info_regions.png`와 `images/` 결과를 확인합니다.
