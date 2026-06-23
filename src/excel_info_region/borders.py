@@ -288,6 +288,9 @@ def touched_border_component_sides(
 
 
 def boxes_are_contact_merge_neighbors(a: Box, b: Box, config: dict[str, Any]) -> bool:
+    if a.contains_box(b) or b.contains_box(a):
+        return False
+
     max_gap = int(config.get("border_contact_merge_max_gap", 1))
     min_axis_overlap = float(config.get("border_contact_merge_min_axis_overlap", 0.80))
 

@@ -10,7 +10,8 @@ from excel_info_region.components import (
     connected_components_from_cells,
     remove_exact_or_contained_duplicates,
 )
-from excel_info_region.extractor import extract_info_regions_from_sheet
+from excel_info_region.extractor import extract_info_regions_from_sheet, extract_workbook_info_regions
+from excel_info_region.runner import _region_tree
 from excel_info_region.schema import Box
 
 
@@ -35,6 +36,7 @@ def test_border_contact_neighbors_need_gap_and_overlap():
     assert boxes_are_contact_merge_neighbors(Box(1, 1, 2, 4), Box(4, 1, 5, 4), cfg)
     assert not boxes_are_contact_merge_neighbors(Box(1, 1, 2, 4), Box(5, 1, 6, 4), cfg)
     assert not boxes_are_contact_merge_neighbors(Box(1, 1, 2, 4), Box(4, 4, 5, 7), cfg)
+    assert not boxes_are_contact_merge_neighbors(Box(1, 1, 6, 6), Box(2, 2, 4, 4), cfg)
 
 
 def test_remove_contained_duplicates_is_config_gated():
@@ -87,6 +89,98 @@ def test_use_print_area_bounds_limits_regions():
     )
 
     assert result["info_regions"] == ["A1:A1"]
+
+
+def test_respect_hidden_sheets_skips_hidden_workbook_sheets(tmp_path):
+    wb = Workbook()
+    wb.active.title = "visible"
+    hidden = wb.create_sheet("hidden")
+    hidden.sheet_state = "hidden"
+    path = tmp_path / "hidden_sheet.xlsx"
+    wb.save(path)
+
+    result = extract_workbook_info_regions(path, config={"respect_hidden_sheets": True})
+
+    assert list(result["sheets"]) == ["visible"]
+
+
+def test_region_tree_marks_contained_regions_as_children():
+    assert _region_tree(["A1:P21", "L5:P14", "A22:J32"]) == [
+        {"range_ref": "A1:P21", "children": [{"range_ref": "L5:P14"}]},
+        {"range_ref": "A22:J32", "children": []},
+    ]
+
+
+def test_region_tree_adds_inner_bordered_tables_from_worksheet():
+    wb = Workbook()
+    ws = wb.active
+    thin = "thin"
+    from openpyxl.styles import Border, Side
+
+    side = Side(style=thin)
+    border = Border(left=side, right=side, top=side, bottom=side)
+    for row in range(2, 5):
+        for col in range(1, 3):
+            ws.cell(row, col).border = border
+        for col in range(4, 7):
+            ws.cell(row, col).border = border
+
+    assert _region_tree(["A1:F6", "D2:F4"], ws) == [
+        {
+            "range_ref": "A1:F6",
+            "children": [{"range_ref": "A2:B4"}, {"range_ref": "D2:F4"}],
+        }
+    ]
+
+
+def test_region_tree_child_candidates_include_merged_value_cells():
+    from openpyxl.styles import Border, Side
+
+    wb = Workbook()
+    ws = wb.active
+    side = Side(style="thin")
+    border = Border(left=side, right=side, top=side, bottom=side)
+    for row in range(2, 5):
+        for col in range(1, 4):
+            ws.cell(row, col).border = border
+    ws.merge_cells("A5:C5")
+    ws["A5"] = "SUM"
+    for col in range(1, 4):
+        ws.cell(5, col).border = border
+
+    assert _region_tree(["A1:D6"], ws) == [
+        {"range_ref": "A1:D6", "children": [{"range_ref": "A2:C5"}]},
+    ]
+
+
+def test_region_tree_groups_vertical_roots_only_with_closed_parent_border():
+    from openpyxl.styles import Border, Side
+
+    wb = Workbook()
+    ws = wb.active
+    side = Side(style="thin")
+    full = Border(left=side, right=side, top=side, bottom=side)
+    for row in range(1, 9):
+        for col in range(1, 5):
+            ws.cell(row, col).border = full
+
+    assert _region_tree(["A1:D2", "A6:D8"], ws) == [
+        {
+            "range_ref": "A1:D8",
+            "children": [{"range_ref": "A1:D2"}, {"range_ref": "A6:D8"}],
+        }
+    ]
+
+    wb = Workbook()
+    ws = wb.active
+    for row in [1, 2, 6, 7, 8]:
+        for col in range(1, 5):
+            ws.cell(row, col).border = full
+
+    assert _region_tree(["A1:D2", "A6:D8"], ws) == [
+        {"range_ref": "A1:D2", "children": []},
+        {"range_ref": "A6:D8", "children": []},
+    ]
 
 
 def test_chart_metadata_includes_anchor_and_sources():

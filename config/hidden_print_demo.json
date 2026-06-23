@@ -8,6 +8,7 @@
   "extract_chart_images": true,
   "chart_image_dir": "charts",
   "respect_hidden_rows_cols": true,
+  "respect_hidden_sheets": true,
   "use_print_area_bounds": true,
   "bounds_padding_rows": 2,
   "bounds_padding_cols": 2,

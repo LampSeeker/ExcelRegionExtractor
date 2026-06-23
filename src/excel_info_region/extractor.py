@@ -29,11 +29,14 @@ def open_workbook(path: str | Path, *, data_only: bool = False):
     return load_workbook(path, read_only=False, data_only=data_only)
 
 
-def iter_target_sheets(workbook, sheet_name: str | None = None):
+def iter_target_sheets(workbook, sheet_name: str | None = None, config: dict[str, Any] | None = None):
     if sheet_name:
         yield workbook[sheet_name]
     else:
+        skip_hidden = bool((config or {}).get("respect_hidden_sheets", False))
         for ws in workbook.worksheets:
+            if skip_hidden and ws.sheet_state != "visible":
+                continue
             yield ws
 
 
@@ -152,7 +155,7 @@ def extract_workbook_info_regions(
         "workbook": str(workbook_path),
         "sheets": {},
     }
-    for ws in iter_target_sheets(wb, sheet_name):
+    for ws in iter_target_sheets(wb, sheet_name, cfg):
         result["sheets"][ws.title] = extract_info_regions_from_sheet(
             ws,
             workbook_path=workbook_path,

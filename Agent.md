@@ -28,7 +28,7 @@ excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/demo
 Run without overlay PNG:
 
 ```powershell
-excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/demo --no-images
+excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/demo --no-overlay
 ```
 
 Test:

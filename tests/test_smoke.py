@@ -8,6 +8,12 @@ from excel_info_region.config import load_config
 from excel_info_region.extractor import extract_workbook_info_regions
 
 
+def test_load_packaged_default_config():
+    cfg = load_config()
+    assert cfg["extract_embedded_images"] is True
+    assert cfg["extract_chart_images"] is True
+
+
 def test_extract_synthetic_demo():
     cfg = load_config(PROJECT_ROOT / "config/default.json")
     result = extract_workbook_info_regions(

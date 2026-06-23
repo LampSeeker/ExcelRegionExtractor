@@ -39,7 +39,7 @@ excel-regions --workbook path/to/workbook.xlsx --sheet "Sheet1" --out outputs/sh
 Skip overlay PNG generation:
 
 ```powershell
-excel-regions --workbook path/to/workbook.xlsx --out outputs/regions --no-images
+excel-regions --workbook path/to/workbook.xlsx --out outputs/regions --no-overlay
 ```
 
 `excel-info-regions` is kept as a backward-compatible alias.
@@ -50,7 +50,7 @@ excel-regions --workbook path/to/workbook.xlsx --out outputs/regions --no-images
 from excel_info_region import extract_workbook_info_regions
 from excel_info_region.config import load_config
 
-config = load_config("config/default.json")
+config = load_config()
 result = extract_workbook_info_regions("path/to/workbook.xlsx", config=config)
 ```
 
@@ -158,10 +158,10 @@ Images are intentionally kept separate from cell connected components. This avoi
 
 ## Configuration
 
-Default config lives at:
+The packaged default config is loaded by:
 
-```text
-config/default.json
+```python
+load_config()
 ```
 
 Common options:
@@ -196,7 +196,7 @@ Set a font path if text is broken in overlay PNGs:
 }
 ```
 
-`--no-images` skips overlay PNG generation. Embedded image extraction still runs when `extract_embedded_images` is `true`.
+`--no-overlay` skips overlay PNG generation. Embedded image extraction still runs when `extract_embedded_images` is `true`.
 
 ## Project Structure
 
@@ -218,10 +218,10 @@ src/excel_info_region/
 
 ```powershell
 pytest
-excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/demo --no-images
+excel-regions --workbook examples/synthetic_demo.xlsx --out outputs/demo --no-overlay
 ```
 
-Run without `--no-images` when changing visualization or image extraction.
+Run without `--no-overlay` when changing visualization or image extraction.
 
 Private/local Excel samples are ignored:
 
