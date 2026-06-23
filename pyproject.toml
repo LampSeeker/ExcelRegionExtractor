@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "excel-region-extractor"
-version = "0.1.3"
+version = "0.1.4"
 description = "Extract information-region bounding boxes from Excel sheets without semantic labels"
 readme = "README.md"
 license = "MIT"
