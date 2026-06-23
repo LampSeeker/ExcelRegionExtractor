@@ -104,9 +104,9 @@ def test_respect_hidden_sheets_skips_hidden_workbook_sheets(tmp_path):
     assert list(result["sheets"]) == ["visible"]
 
 
-def test_region_tree_marks_contained_regions_as_children():
+def test_region_tree_does_not_mark_contained_regions_as_children_without_border_evidence():
     assert _region_tree(["A1:P21", "L5:P14", "A22:J32"]) == [
-        {"range_ref": "A1:P21", "children": [{"range_ref": "L5:P14"}]},
+        {"range_ref": "A1:P21", "children": []},
         {"range_ref": "A22:J32", "children": []},
     ]
 
@@ -119,16 +119,14 @@ def test_region_tree_adds_inner_bordered_tables_from_worksheet():
 
     side = Side(style=thin)
     border = Border(left=side, right=side, top=side, bottom=side)
-    for row in range(2, 5):
-        for col in range(1, 3):
-            ws.cell(row, col).border = border
-        for col in range(4, 7):
+    for row in range(3, 6):
+        for col in range(3, 5):
             ws.cell(row, col).border = border
 
-    assert _region_tree(["A1:F6", "D2:F4"], ws) == [
+    assert _region_tree(["A1:F7"], ws) == [
         {
-            "range_ref": "A1:F6",
-            "children": [{"range_ref": "A2:B4"}, {"range_ref": "D2:F4"}],
+            "range_ref": "A1:F7",
+            "children": [{"range_ref": "C3:D5"}],
         }
     ]
 
@@ -140,20 +138,29 @@ def test_region_tree_child_candidates_include_merged_value_cells():
     ws = wb.active
     side = Side(style="thin")
     border = Border(left=side, right=side, top=side, bottom=side)
-    for row in range(2, 5):
-        for col in range(1, 4):
+    for row in range(3, 6):
+        for col in range(3, 6):
             ws.cell(row, col).border = border
-    ws.merge_cells("A5:C5")
-    ws["A5"] = "SUM"
-    for col in range(1, 4):
-        ws.cell(5, col).border = border
+    ws.merge_cells("C6:E6")
+    ws["C6"] = "SUM"
+    for col in range(3, 6):
+        ws.cell(6, col).border = border
 
-    assert _region_tree(["A1:D6"], ws) == [
-        {"range_ref": "A1:D6", "children": [{"range_ref": "A2:C5"}]},
+    assert _region_tree(["A1:G8"], ws) == [
+        {"range_ref": "A1:G8", "children": [{"range_ref": "C3:E6"}]},
     ]
 
 
-def test_region_tree_groups_vertical_roots_only_with_closed_parent_border():
+def test_region_tree_ignores_single_cell_contained_regions():
+    wb = Workbook()
+    ws = wb.active
+
+    assert _region_tree(["A1:D35", "D8:D8"], ws) == [
+        {"range_ref": "A1:D35", "children": []},
+    ]
+
+
+def test_region_tree_keeps_separate_roots_separate():
     from openpyxl.styles import Border, Side
 
     wb = Workbook()
@@ -165,10 +172,8 @@ def test_region_tree_groups_vertical_roots_only_with_closed_parent_border():
             ws.cell(row, col).border = full
 
     assert _region_tree(["A1:D2", "A6:D8"], ws) == [
-        {
-            "range_ref": "A1:D8",
-            "children": [{"range_ref": "A1:D2"}, {"range_ref": "A6:D8"}],
-        }
+        {"range_ref": "A1:D2", "children": []},
+        {"range_ref": "A6:D8", "children": []},
     ]
 
     wb = Workbook()

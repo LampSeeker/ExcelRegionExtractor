@@ -34,6 +34,8 @@ examples/sample2.xlsx
 .env
 .env.*
 !.env.example
+.pypirc
+pypi-token.txt
 
 # Logs and temporary files
 *.log

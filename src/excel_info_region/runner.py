@@ -6,8 +6,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from typing import Any
 
 from .config import load_config
-from .borders import collect_border_edges, edge_endpoints
-from .cells import merged_boxes_with_values
+from .borders import collect_border_edges
 from .components import connected_components_from_cells, dedupe_boxes
 from .extractor import extract_workbook_info_regions, summarize_workbook_result, open_workbook
 from .chart_export import extract_sheet_charts_to_dir
@@ -73,38 +72,6 @@ def _has_closed_border(ws: Worksheet, box: Box) -> bool:
     )
 
 
-def _edge_component_boxes(edges: set[tuple[str, int, int]]) -> list[Box]:
-    endpoint_to_edges: dict[tuple[int, int], list[tuple[str, int, int]]] = {}
-    for edge in edges:
-        for point in edge_endpoints(edge):
-            endpoint_to_edges.setdefault(point, []).append(edge)
-
-    boxes: list[Box] = []
-    seen: set[tuple[str, int, int]] = set()
-    for start in edges:
-        if start in seen:
-            continue
-        stack = [start]
-        seen.add(start)
-        points: list[tuple[int, int]] = []
-        while stack:
-            edge = stack.pop()
-            points.extend(edge_endpoints(edge))
-            for point in edge_endpoints(edge):
-                for nxt in endpoint_to_edges.get(point, []):
-                    if nxt not in seen:
-                        seen.add(nxt)
-                        stack.append(nxt)
-        if points:
-            min_row = min(row for row, _col in points)
-            min_col = min(col for _row, col in points)
-            max_row = max(row for row, _col in points) - 1
-            max_col = max(col for _row, col in points) - 1
-            if max_row >= min_row and max_col >= min_col:
-                boxes.append(Box(min_row, min_col, max_row, max_col))
-    return dedupe_boxes(boxes)
-
-
 def _inner_table_boxes(ws: Worksheet, root: Box) -> list[Box]:
     edges = collect_border_edges(ws, root, {"use_border_contact_merge": True, "include_merged_cells": True})
     if not edges:
@@ -119,19 +86,22 @@ def _inner_table_boxes(ws: Worksheet, root: Box) -> list[Box]:
     def closed(box: Box) -> bool:
         return _has_closed_border(ws, box)
 
+    def isolated(box: Box) -> bool:
+        return (
+            box.width >= 2
+            and box.height >= 2
+            and box.min_row > root.min_row
+            and box.min_col > root.min_col
+            and box.max_row < root.max_row
+            and box.max_col < root.max_col
+        )
+
     occupied = {
         (row, col)
         for row in range(root.min_row + 1, root.max_row + 1)
         for col in range(root.min_col, root.max_col + 1)
         if has_grid_cell(row, col)
     }
-    for merged in merged_boxes_with_values(ws):
-        if not root.contains_box(merged):
-            continue
-        for row in range(merged.min_row, merged.max_row + 1):
-            for col in range(merged.min_col, merged.max_col + 1):
-                occupied.add((row, col))
-
     candidates: list[Box] = []
     for box in connected_components_from_cells(occupied, connectivity=4, min_occupied_cells=4):
         for candidate in (
@@ -140,7 +110,7 @@ def _inner_table_boxes(ws: Worksheet, root: Box) -> list[Box]:
         ):
             if candidate != box and closed(candidate):
                 box = candidate
-        if root.contains_box(box) and box != root and box.width < root.width and box.height < root.height and closed(box):
+        if root.contains_box(box) and isolated(box) and closed(box):
             candidates.append(box)
 
     kept: list[Box] = []
@@ -150,47 +120,14 @@ def _inner_table_boxes(ws: Worksheet, root: Box) -> list[Box]:
     return kept
 
 
-def _topology_root_boxes(root_refs: list[str], ws: Worksheet | None) -> list[Box]:
-    roots = [_box_from_range(ref) for ref in root_refs]
-    if not roots or ws is None:
-        return roots
-
-    bounds = roots[0]
-    for box in roots[1:]:
-        bounds = bounds.union(box)
-
-    search_bounds = Box(
-        max(1, bounds.min_row - 1),
-        max(1, bounds.min_col - 1),
-        min(ws.max_row, bounds.max_row + 1),
-        min(ws.max_column, bounds.max_col + 1),
-    )
-    edges = collect_border_edges(ws, search_bounds, {"use_border_contact_merge": True, "include_merged_cells": True})
-    parents = [
-        box
-        for box in _edge_component_boxes(edges)
-        if sum(1 for root in roots if box.contains_box(root)) >= 2 and _has_closed_border(ws, box)
-    ]
-    if parents:
-        return [min(parents, key=lambda box: box.area)]
-    return roots
-
-
 def _region_tree(ranges: list[str], ws: Worksheet | None = None) -> list[dict[str, Any]]:
-    boxes = [(range_ref, _box_from_range(range_ref)) for range_ref in ranges]
     base_roots = _root_ranges(ranges)
-    roots = [(box.range_ref, box) for box in _topology_root_boxes(base_roots, ws)]
+    roots = [(range_ref, _box_from_range(range_ref)) for range_ref in base_roots]
     children_by_root: dict[str, list[Box]] = {range_ref: [] for range_ref, _ in roots}
 
     for root_ref, root_box in roots:
         topology_children = _inner_table_boxes(ws, root_box) if ws is not None else []
-        if topology_children:
-            children_by_root[root_ref].extend(topology_children)
-            continue
-
-        for _child_ref, child_box in boxes:
-            if root_box.contains_box(child_box) and root_box != child_box:
-                children_by_root[root_ref].append(child_box)
+        children_by_root[root_ref].extend(topology_children)
 
     return [
         {
@@ -267,7 +204,7 @@ def run_and_write(
         #   "regions": ["A1:P1", ...],
         #   "images": [{"name": "...", "range_ref": "...", "path": "..."}]
         # }
-        root_regions = [box.range_ref for box in _topology_root_boxes(_root_ranges(data.get("info_regions", [])), wb_drawings[sheet])]
+        root_regions = _root_ranges(data.get("info_regions", []))
         sheet_output = {
             "sheet_name": data["sheet_name"],
             "regions": root_regions,
