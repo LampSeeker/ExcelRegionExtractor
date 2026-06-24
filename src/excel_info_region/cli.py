@@ -13,6 +13,7 @@ def main() -> None:
     p.add_argument("--out", default="outputs/info_regions")
     p.add_argument("--no-overlay", action="store_true", help="Skip PNG overlay generation")
     p.add_argument("--no-images", action="store_true", dest="no_overlay", help=argparse.SUPPRESS)
+    p.add_argument("--snapshots", action="store_true", help="Write snapshot_plan.json and sampled snapshot PNGs")
     p.add_argument("--respect-hidden", action="store_true", help="Exclude hidden rows and columns")
     p.add_argument("--use-print-area", action="store_true", help="Limit extraction to each sheet's print area")
     args = p.parse_args()
@@ -31,6 +32,7 @@ def main() -> None:
         config_path=args.config,
         config_overrides=overrides,
         write_images=not args.no_overlay,
+        write_snapshots=args.snapshots,
     )
 
     print(f"[extract_info_regions] sheets={len(result['sheets'])} -> {args.out}")

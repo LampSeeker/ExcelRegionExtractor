@@ -349,6 +349,7 @@ def run_and_write(
     config_path: str | Path | None = None,
     config_overrides: dict[str, Any] | None = None,
     write_images: bool = True,
+    write_snapshots: bool = False,
 ) -> dict[str, Any]:
     config = load_config(config_path)
     if config_overrides:
@@ -431,11 +432,13 @@ def run_and_write(
                 font_path=viz_cfg.get("font_path"),
                 workbook_path=str(workbook_path),
             )
-            sheet_output["snapshot_plan"] = _snapshot_plan(ws, overlay_regions, images)
-            sheet_output["snapshots"] = _render_snapshots(ws, sheet_output["snapshot_plan"], sheet_dir, viz_cfg, workbook_path)
-            sheet_output["region_images"] = sheet_output["snapshots"]
+            if write_snapshots:
+                sheet_output["snapshot_plan"] = _snapshot_plan(ws, overlay_regions, images)
+                sheet_output["snapshots"] = _render_snapshots(ws, sheet_output["snapshot_plan"], sheet_dir, viz_cfg, workbook_path)
+                sheet_output["region_images"] = sheet_output["snapshots"]
 
-        write_json(sheet_dir / "snapshot_plan.json", sheet_output["snapshot_plan"])
+        if write_snapshots:
+            write_json(sheet_dir / "snapshot_plan.json", sheet_output["snapshot_plan"])
         write_json(sheet_dir / "info_regions.json", sheet_output)
 
     summary = summarize_workbook_result(result)

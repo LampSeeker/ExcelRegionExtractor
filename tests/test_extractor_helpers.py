@@ -220,7 +220,7 @@ def test_chart_export_removes_empty_chart_dir(tmp_path):
     assert not chart_dir.exists()
 
 
-def test_run_and_write_exports_region_images(tmp_path):
+def test_run_and_write_skips_snapshots_by_default(tmp_path):
     wb = Workbook()
     ws = wb.active
     ws.title = "Sheet1"
@@ -236,8 +236,8 @@ def test_run_and_write_exports_region_images(tmp_path):
     )
 
     data = json.loads((out_dir / "Sheet1" / "info_regions.json").read_text(encoding="utf-8"))
-    assert data["region_images"]
-    assert (out_dir / "Sheet1" / data["region_images"][0]["path"]).exists()
+    assert data["region_images"] == []
+    assert not (out_dir / "Sheet1" / "snapshot_plan.json").exists()
 
 
 def test_run_and_write_samples_large_regions(tmp_path):
@@ -255,6 +255,7 @@ def test_run_and_write_samples_large_regions(tmp_path):
         workbook_path,
         out_dir=out_dir,
         config_overrides={"include_images": False, "extract_embedded_images": False, "extract_chart_images": False},
+        write_snapshots=True,
     )
 
     plan = json.loads((out_dir / "Large" / "snapshot_plan.json").read_text(encoding="utf-8"))
