@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from openpyxl import Workbook
 from openpyxl.chart import BarChart, Reference
 
@@ -11,7 +13,7 @@ from excel_info_region.components import (
     remove_exact_or_contained_duplicates,
 )
 from excel_info_region.extractor import extract_info_regions_from_sheet, extract_workbook_info_regions
-from excel_info_region.runner import _region_tree
+from excel_info_region.runner import _region_tree, run_and_write
 from excel_info_region.schema import Box
 
 
@@ -216,3 +218,23 @@ def test_chart_export_removes_empty_chart_dir(tmp_path):
 
     assert extract_sheet_charts_to_dir(ws, tmp_path) == []
     assert not chart_dir.exists()
+
+
+def test_run_and_write_exports_region_images(tmp_path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws["A1"] = "hello"
+    workbook_path = tmp_path / "region_image.xlsx"
+    out_dir = tmp_path / "out"
+    wb.save(workbook_path)
+
+    run_and_write(
+        workbook_path,
+        out_dir=out_dir,
+        config_overrides={"include_images": False, "extract_embedded_images": False, "extract_chart_images": False},
+    )
+
+    data = json.loads((out_dir / "Sheet1" / "info_regions.json").read_text(encoding="utf-8"))
+    assert data["region_images"]
+    assert (out_dir / "Sheet1" / data["region_images"][0]["path"]).exists()

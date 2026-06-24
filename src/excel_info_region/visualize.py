@@ -12,7 +12,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from .chart_export import render_chart_preview
 from .chart_regions import chart_metadata
 from .io import ensure_dir
-from .raw_drawing import extract_drawing_images, drawing_image_pixel_box
+from .raw_drawing import extract_drawing_images, drawing_image_pixel_box, sheet_pixel_axes
 
 
 EMU_PER_PIXEL = 9525
@@ -59,11 +59,11 @@ def _font(size: int = 13, bold: bool = False, font_path: str | None = None):
     return ImageFont.load_default()
 
 
-def _value_preview(value: Any, max_len: int = 42) -> str:
+def _value_preview(value: Any, max_len: int | None = None) -> str:
     if value is None:
         return ""
     text = str(value).replace("\r\n", "\n").replace("\r", "\n").strip()
-    if len(text) <= max_len:
+    if max_len is None or len(text) <= max_len:
         return text
     return text[: max_len - 1] + "…"
 
@@ -87,6 +87,36 @@ def _expand_bounds(bounds: tuple[int, int, int, int], pad_rows: int, pad_cols: i
         min(1048576, max_row + pad_rows),
         min(16384, max_col + pad_cols),
     )
+
+
+def _expand_bounds_for_text_overflow(
+    ws: Worksheet,
+    bounds: tuple[int, int, int, int],
+    max_cols: int,
+    font_path: str | None,
+) -> tuple[int, int, int, int]:
+    min_row, min_col, max_row, max_col = bounds
+    draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    expanded_max_col = max_col
+    for row in range(min_row, max_row + 1):
+        for col in range(min_col, max_col + 1):
+            cell = ws.cell(row, col)
+            text = _value_preview(cell.value, max_len=500)
+            if not text or "\n" in text or bool(getattr(getattr(cell, "alignment", None), "wrap_text", False)):
+                continue
+
+            font = _font(int(getattr(cell.font, "sz", None) or 10), bool(getattr(cell.font, "bold", False)), font_path)
+            text_width = _text_bbox(draw, (0, 0), text, font)[2] + 8
+            width = 0
+            spill_col = col
+            limit_col = min(16384, min_col + max_cols - 1)
+            while spill_col <= limit_col and width < text_width:
+                letter = get_column_letter(spill_col)
+                col_width = ws.column_dimensions[letter].width if letter in ws.column_dimensions else None
+                width += _column_width_to_pixels(col_width)
+                spill_col += 1
+            expanded_max_col = max(expanded_max_col, spill_col - 1)
+    return min_row, min_col, max_row, expanded_max_col
 
 
 def _column_width_to_pixels(width: float | None) -> int:
@@ -194,6 +224,12 @@ def _draw_wrapped_text(draw: ImageDraw.ImageDraw, rect: tuple[int, int, int, int
     if not text:
         return
     x0, y0, x1, y1 = rect
+    if "\n" not in text and not bool(getattr(getattr(cell, "alignment", None), "wrap_text", False)):
+        bbox = _text_bbox(draw, (0, 0), text, font)
+        tx, ty = _alignment_offsets(cell, rect, (bbox[2] - bbox[0], bbox[3] - bbox[1]))
+        draw.text((tx, ty), text, fill=fill, font=font)
+        return
+
     max_width = max(1, x1 - x0 - 8)
     lines: list[str] = []
     for raw_line in text.split("\n"):
@@ -280,13 +316,18 @@ def _paste_worksheet_images(
         except Exception:
             raw_images = []
         if raw_images:
+            full_max_row = max(max_row, max((i.to_marker.row if i.to_marker else i.from_marker.row + 50) for i in raw_images) + 2)
+            full_max_col = max(max_col, max((i.to_marker.col if i.to_marker else i.from_marker.col + 30) for i in raw_images) + 2)
+            full_col_x, full_row_y, _full_col_w, _full_row_h = sheet_pixel_axes(ws, full_max_row, full_max_col)
+            viewport_x0 = full_col_x.get(min_col, 0)
+            viewport_y0 = full_row_y.get(min_row, 0)
             for raw_img in raw_images:
                 try:
-                    rx0, ry0, rx1, ry1 = drawing_image_pixel_box(raw_img, ws, col_x, row_y)
-                    x0 = int(left_gutter + rx0)
-                    y0 = int(top_gutter + ry0)
-                    x1 = int(left_gutter + rx1)
-                    y1 = int(top_gutter + ry1)
+                    rx0, ry0, rx1, ry1 = drawing_image_pixel_box(raw_img, ws, full_col_x, full_row_y)
+                    x0 = int(left_gutter + rx0 - viewport_x0)
+                    y0 = int(top_gutter + ry0 - viewport_y0)
+                    x1 = int(left_gutter + rx1 - viewport_x0)
+                    y1 = int(top_gutter + ry1 - viewport_y0)
                 except Exception:
                     continue
                 if x1 < left_gutter or y1 < top_gutter:
@@ -390,6 +431,7 @@ def render_region_overlay(
             int(bounds["max_row"]),
             int(bounds["max_col"]),
         )
+        raw_bounds = _expand_bounds_for_text_overflow(ws, raw_bounds, max_cols, font_path)
     else:
         region_bounds = _bounds_from_regions(regions)
         raw_bounds = region_bounds or (1, 1, min(ws.max_row, 30), min(ws.max_column, 12))

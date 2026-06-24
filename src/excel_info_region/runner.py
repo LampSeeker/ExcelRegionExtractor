@@ -49,6 +49,51 @@ def _overlay_regions_from_tree(region_tree: list[dict[str, Any]], sheet_name: st
     return regions
 
 
+def _render_region_images(
+    ws: Worksheet,
+    regions: list[dict[str, Any]],
+    images: list[dict[str, Any]],
+    sheet_dir: Path,
+    viz_cfg: dict[str, Any],
+    workbook_path: str | Path,
+) -> list[dict[str, str]]:
+    output: list[dict[str, str]] = []
+    rel_dir = "region_images"
+    image_ranges = {str(image.get("range_ref")) for image in images}
+    region_dir = sheet_dir / rel_dir
+    if region_dir.exists():
+        for path in region_dir.glob("*.png"):
+            path.unlink()
+    for region in regions:
+        if str(region["range_ref"]) in image_ranges:
+            continue
+        filename = safe_name(f"{region['id']}_{region['range_ref']}.png")
+        render_region_overlay(
+            ws,
+            [],
+            sheet_dir / rel_dir / filename,
+            title=f"{ws.title} - {region['id']} {region['range_ref']}",
+            bounds=region,
+            max_rows=int(viz_cfg.get("max_rows", 160)),
+            max_cols=int(viz_cfg.get("max_cols", 90)),
+            pad_rows=int(viz_cfg.get("region_pad_rows", 0)),
+            pad_cols=int(viz_cfg.get("region_pad_cols", 0)),
+            preserve_dimensions=bool(viz_cfg.get("preserve_dimensions", True)),
+            include_images=False,
+            include_cell_text=bool(viz_cfg.get("include_cell_text", True)),
+            include_merged_cells=bool(viz_cfg.get("include_merged_cells", True)),
+            scale=float(viz_cfg.get("scale", 1.0)),
+            font_path=viz_cfg.get("font_path"),
+            workbook_path=str(workbook_path),
+        )
+        output.append({
+            "id": str(region["id"]),
+            "range_ref": str(region["range_ref"]),
+            "path": f"{rel_dir}/{filename}",
+        })
+    return output
+
+
 def _box_from_range(range_ref: str) -> Box:
     min_col, min_row, max_col, max_row = range_boundaries(range_ref)
     return Box(min_row, min_col, max_row, max_col)
@@ -209,12 +254,12 @@ def run_and_write(
             "sheet_name": data["sheet_name"],
             "regions": root_regions,
             "region_tree": _region_tree(data.get("info_regions", []), wb_drawings[sheet]),
+            "region_images": [],
             "images": images,
             "charts": charts,
         }
 
         result["sheets"][sheet] = sheet_output
-        write_json(sheet_dir / "info_regions.json", sheet_output)
 
         if wb_values is not None and sheet_output.get("regions"):
             ws = wb_values[sheet]
@@ -238,6 +283,9 @@ def run_and_write(
                 font_path=viz_cfg.get("font_path"),
                 workbook_path=str(workbook_path),
             )
+            sheet_output["region_images"] = _render_region_images(ws, overlay_regions, images, sheet_dir, viz_cfg, workbook_path)
+
+        write_json(sheet_dir / "info_regions.json", sheet_output)
 
     summary = summarize_workbook_result(result)
     write_json(out / "info_regions_full.json", result)
