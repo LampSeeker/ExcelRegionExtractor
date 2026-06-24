@@ -13,7 +13,7 @@ from excel_info_region.components import (
     remove_exact_or_contained_duplicates,
 )
 from excel_info_region.extractor import extract_info_regions_from_sheet, extract_workbook_info_regions
-from excel_info_region.runner import _region_tree, run_and_write
+from excel_info_region.runner import _merge_structure_boxes, _region_tree, run_and_write
 from excel_info_region.schema import Box
 
 
@@ -238,3 +238,45 @@ def test_run_and_write_exports_region_images(tmp_path):
     data = json.loads((out_dir / "Sheet1" / "info_regions.json").read_text(encoding="utf-8"))
     assert data["region_images"]
     assert (out_dir / "Sheet1" / data["region_images"][0]["path"]).exists()
+
+
+def test_run_and_write_samples_large_regions(tmp_path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Large"
+    ws.append(["A", "B", "C"])
+    for row in range(2, 151):
+        ws.append([row, row * 2, row * 3])
+    workbook_path = tmp_path / "large.xlsx"
+    out_dir = tmp_path / "out"
+    wb.save(workbook_path)
+
+    run_and_write(
+        workbook_path,
+        out_dir=out_dir,
+        config_overrides={"include_images": False, "extract_embedded_images": False, "extract_chart_images": False},
+    )
+
+    plan = json.loads((out_dir / "Large" / "snapshot_plan.json").read_text(encoding="utf-8"))
+    assert plan[0]["strategy"] == "large_table_sampled"
+    assert any(snapshot["kind"] == "overview" and snapshot["render"] is False for snapshot in plan[0]["snapshots"])
+    rendered = [snapshot for snapshot in plan[0]["snapshots"] if snapshot.get("render", True)]
+    assert rendered
+    assert all((out_dir / "Large" / snapshot["path"]).exists() for snapshot in rendered)
+
+
+def test_merge_structure_changes_are_clustered_with_margin():
+    wb = Workbook()
+    ws = wb.active
+    for row in range(1, 21):
+        for col in range(1, 9):
+            ws.cell(row, col).value = "x"
+    for row, ranges in {
+        1: ["A1:C1", "D1:F1", "G1:H1"],
+        3: ["A3:B3", "C3:E3", "F3:H3"],
+        7: ["A7:D7", "E7:H7"],
+    }.items():
+        for range_ref in ranges:
+            ws.merge_cells(range_ref)
+
+    assert [box.range_ref for box in _merge_structure_boxes(ws, Box(1, 1, 20, 8))] == ["A1:H12"]

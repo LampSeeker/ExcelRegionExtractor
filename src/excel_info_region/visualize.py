@@ -101,7 +101,7 @@ def _expand_bounds_for_text_overflow(
     for row in range(min_row, max_row + 1):
         for col in range(min_col, max_col + 1):
             cell = ws.cell(row, col)
-            text = _value_preview(cell.value, max_len=500)
+            text = _value_preview(cell.value)
             if not text or "\n" in text or bool(getattr(getattr(cell, "alignment", None), "wrap_text", False)):
                 continue
 
