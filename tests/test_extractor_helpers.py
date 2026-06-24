@@ -260,9 +260,12 @@ def test_run_and_write_samples_large_regions(tmp_path):
 
     plan = json.loads((out_dir / "Large" / "snapshot_plan.json").read_text(encoding="utf-8"))
     assert plan[0]["strategy"] == "large_table_sampled"
+    assert plan[0]["snapshot_mode"] == "split"
+    assert plan[0]["is_split"] is True
     assert any(snapshot["kind"] == "overview" and snapshot["render"] is False for snapshot in plan[0]["snapshots"])
     rendered = [snapshot for snapshot in plan[0]["snapshots"] if snapshot.get("render", True)]
     assert rendered
+    assert all(snapshot["snapshot_mode"] == "split" and snapshot["is_split"] is True for snapshot in rendered)
     assert all((out_dir / "Large" / snapshot["path"]).exists() for snapshot in rendered)
 
 

@@ -135,9 +135,11 @@ def _region_snapshot_plan(ws: Worksheet, region: dict[str, Any], image_ranges: s
     )
     if box.range_ref in image_ranges:
         strategy = "embedded_image"
+        snapshot_mode = "none"
         snapshots: list[dict[str, Any]] = []
     elif box.height > 120 or box.area > 1000:
         strategy = "large_table_sampled"
+        snapshot_mode = "split"
         change_row = max(box.min_row, min(box.max_row, _change_point_row(ws, box)))
         samples = [("overview", box, "metadata only; do not render the full region")]
         render_samples = [
@@ -158,17 +160,22 @@ def _region_snapshot_plan(ws: Worksheet, region: dict[str, Any], image_ranges: s
                 "range_ref": sample_box.range_ref,
                 "purpose": purpose,
                 "render": kind != "overview",
+                "snapshot_mode": "metadata" if kind == "overview" else "split",
+                "is_split": kind != "overview",
             }
             for idx, (kind, sample_box, purpose) in enumerate(samples, 1)
         ]
     else:
         strategy = "full_region"
+        snapshot_mode = "full"
         snapshots = [{
             "snapshot_id": "S001",
             "kind": "full_region",
             "range_ref": box.range_ref,
             "purpose": "complete small information region",
             "render": True,
+            "snapshot_mode": "full",
+            "is_split": False,
         }]
 
     return {
@@ -180,6 +187,8 @@ def _region_snapshot_plan(ws: Worksheet, region: dict[str, Any], image_ranges: s
         "merged_cell_count": merged_count,
         "formula_count": formula_count,
         "strategy": strategy,
+        "snapshot_mode": snapshot_mode,
+        "is_split": snapshot_mode == "split",
         "snapshots": snapshots,
     }
 
@@ -235,6 +244,8 @@ def _render_snapshots(
                 "snapshot_id": str(snapshot["snapshot_id"]),
                 "kind": str(snapshot["kind"]),
                 "range_ref": box.range_ref,
+                "snapshot_mode": str(snapshot.get("snapshot_mode", region_plan.get("snapshot_mode", ""))),
+                "is_split": bool(snapshot.get("is_split", region_plan.get("is_split", False))),
                 "path": path,
             })
     return output
